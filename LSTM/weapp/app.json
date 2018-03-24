@@ -1,0 +1,14 @@
+{
+  "pages":[
+    "pages/welcome/index",
+    "pages/logs/logs",
+    "pages/gen/zimu"
+  ],
+  "window":{
+    "backgroundTextStyle":"light",
+    "navigationBarBackgroundColor": "#87CEFA", 
+    "navigationBarTitleText": "为你写诗",
+    "navigationBarTextStyle":"black",
+    "backgroundColor": "#87CEFA"
+  }
+}

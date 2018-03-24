@@ -1,0 +1,8 @@
+<view class="content">
+    <view class="status">
+        <icon type="{{status}}" size="70" />
+    </view>
+  <progress percent="80" active="true" stroke-width="3" show-info/>
+  <text vertical-align= "middle" >{{waitmsg}}</text>
+</view>
+

@@ -1,0 +1,17 @@
+/* pages/gen/zimu.wxss */
+.content{
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 200rpx 0;
+  //box-sizing: border-box;
+}
+
+page {
+  display: block;
+  min-height: 100%;
+  background-color: #87CEFA;
+}
+
