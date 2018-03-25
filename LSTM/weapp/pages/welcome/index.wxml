@@ -21,7 +21,7 @@
   <!--progress percent="80" active="true" stroke-width="3" show-info/>-->
   <!--text vertical-align= "middle" >{{waitmsg}}</text-->
   <view wx:for="{{poetrycontent}}" animation="{{animationData4}}" class="{{poemreshowflag==false?'hide':'poetrytext'}}" vertical-align= "middle">
-  <text> {{item}} </text>
+  <text wx:if="{{index <= linenum}}" > {{item}} </text>
   </view>
   <button class= "usermotto" plain="true" bindtap="clickMe" size="mini">再来一首？</button>
 </view>

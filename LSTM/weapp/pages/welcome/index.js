@@ -20,7 +20,9 @@ Page({
     animationData2: {},
     animationData3: {},
     animationData4: {},
-    poetrycontent: []
+    poetrycontent: [],
+    templine: [],
+    linenum: 0
   }, 
   //事件处理函数
   bindViewTap: function() {
@@ -167,12 +169,13 @@ Page({
       bonjorShowflag: false,
       dianwoShowflag: false,
       poemShowflag: true,
-      poemreshowflag: false
+      poemreshowflag: false,
+      linenum: 0
     });
-
+    var that =this;
     wx.request({
-     /* url: 'https://16644679.peitaiyi.xyz/getpoetry' + Math.floor(Math.random()*10), */
-      url: 'https://16644679.peitaiyi.xyz/getpoetry0_split',
+      url: 'https://16644679.peitaiyi.xyz/getpoetry' + Math.floor(Math.random()*10), 
+      /*url: 'https://16644679.peitaiyi.xyz/getpoetry0_split',*/
       method: 'GET',
       success: (res) => {
         if (+res.statusCode == 200) {
@@ -183,7 +186,20 @@ Page({
           this.setData({ waitmsg: '服务器无响应!', status: 'waiting' })
         }
       }
+
     });
+
+    var cout = 0;
+    var i = setInterval(function () {
+      that.setData({ linenum:cout})
+      //console.log(cout)
+      cout = cout + 1;
+    }, 2000)//循环时间 这里是1秒  
+
+    setTimeout(function() {
+      clearInterval(i)
+      that.setData({ cout: 0 });
+    },10000)
 
     let animation4 = wx.createAnimation({
       duration: 2000,
@@ -191,20 +207,19 @@ Page({
       delay: 0
     });
 
-    this.setData({ poemreshowflag: true })
+    that.setData({ poemreshowflag: true })
     animation4.opacity(0.01, 0.01).step()
 
-    this.setData({
+    that.setData({
       animationData4: animation4.export()
     });
 
     setTimeout(function () {
       animation4.opacity(1, 1).step()
-      this.setData({
+      that.setData({
         animationData4: animation4.export()
       })
-    }.bind(this), 1000)
-
+    }.bind(that), 1000)
 
 /*
     wx.downloadFile({
