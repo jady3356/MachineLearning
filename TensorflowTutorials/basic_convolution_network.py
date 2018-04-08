@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#一个简单的有2个隐藏层的神经网络： L1(Input, 128组图片) -> L2(784, 625) -> L3(625,625) -> L4(625,10) -> output(none, 10)
+#一个简单的有2个隐藏层的卷积神经网络： L1(Input, 128组图片) -> L2(784, 625) -> L3(625,625) -> L4(625,10) -> output(none, 10)
 
 import tensorflow as tf
 import numpy as np
