@@ -39,7 +39,8 @@ arr_data = np.array(user_behavior_set)
 
 # 利用pandas读取并处理csv
 data = pd.read_csv(r'fresh_comp_offline\\tianchi_fresh_comp_train_user.csv')
-# 去重 ？？？
+# 去重 
+data = data.drop_duplicates() # 时间精度是1小时，用户有可能是一小时内点击多次，所以还是去掉一个小时内同一个商品的多次点击
 
 print("Raw data info:\n", data.info())
 #data['user_geohash'].convert_objects(convert_numeric=True)
@@ -60,7 +61,7 @@ count = collections.Counter(geohash).most_common() # 按照每个地址的出现
 # Build dictionaries
 rdic = [i[0] for i in count] #取每个元组的第一个元素，即所有的地理位置hash值
 dic = {w: i for i, w in enumerate(rdic)} #enumerate给每个元素添加index，得到字典：{nan: 0, '96p6u4v': 1, '96p6tuo': 2, '96p6tvd': 3, '96p6tuk': 4,....
-#print(dic[np.nan],dic['96p6u4v']) 有点意思，这里一定要用np.nan来索引，nan则不行
+#print(dic[np.nan],dic['96p6u4v']) 这里一定要用np.nan来索引，nan则不行
 
 # 把每个地理位置映射成index
 geohash = [dic[weizhi] for weizhi in geohash] # 遍历每个地址位置key，然后在dic中找到对应的键值value(即数字)
@@ -69,26 +70,47 @@ data['user_geohash'] = geohash
 
 # 2. 把时间列转数值
 datatime = data['time'].str.replace('-','') # 去掉-
+datatime = datatime.str.replace('2014','') # 去掉2014
 data['time'] = datatime.str.replace(' ','').astype(np.int64) # 去掉空格并转为int64
 #print(data['time'])
 data = pd.DataFrame(data, dtype='float')
 
-# 3. 特征分析和扩充
+# 3. 特征工程：分析和扩充
+# 商品属性： 被点击收藏，加购物车，购买的总数
+# 用户属性： 总点击，收藏数，加购物车，购买数
+data['User_Buy_Ratio'] = data['behavior_type'] # 先为data增加User_Buy_Ratio，值都临时等于购买behavior
+for user_index, _ in data['User_Buy_Ratio'].groupby(data['user_id']): # _为每个用户的行为数据，这里没有用
+    temp = data[data['user_id']==user_index] # temp是一个frame
+    total_behavior_count = temp['behavior_type'].count() # int, 单个user总的点击，购买，收藏，购物车数量
+    buyUser = temp[temp['behavior_type']==4] # butUser也是一个frame，只是过滤的所有的购买行
+    buyUserCount = buyUser['behavior_type'].count() # butUserCount是一个int, 单个user总的购买数
+    data['User_Buy_Ratio'][data['user_id']==user_index] = buyUserCount/total_behavior_count # 总的购买数/总的点击数
 
+data['Item_Hot_Ratio'] = data['User_Buy_Ratio']
+for item_index, _ in data['Item_Hot_Ratio'].groupby(data['item_id']):
+    temp = data[data['item_id']==item_index] # 单个商品的dataframe
+    total_behavior_count = temp['behavior_type'].count()
+    bought =  temp[temp['behavior_type']==4]
+    boughtCount = bought['behavior_type'].count()
+    data['Item_Hot_Ratio'][data['item_id']==item_index] = boughtCount/total_behavior_count
 
+#print(data['behavior_type'].groupby(data['user_id']).count()) # 每个user总的收藏，浏览，购买，购物车数量
+print(data.head(10))
+data.to_csv('data_clean_feature_expended.csv', index=False)
+# user ID set, 总的用户数20000
+#user_set = data['user_id'].drop_duplicates() # drop_duplicates去重，values转列表
+#user_set.to_csv('user_id_set.csv',index=False)
+#print("user ID set:", user_set.shape)
+'''
 # 4. 归一化
 data = (data - data.mean()) / (data.std())
 print("Clean data info:\n",data.info())
-
-# user ID set, 总的用户数20000
-user_set = data['user_id'].drop_duplicates().values # drop_duplicates去重，values转列表
-print("user ID set:", user_set.shape)
 
 #初始化
 batch_size = 1024
 
 # 定义train的输入trX, train的label trY。 验证集teX和teY
-X_data_set =  data.loc[0:9999, ['user_id', 'item_id', 'user_geohash', 'item_category', 'time']]
+X_data_set =  data.loc[0:9999, ['user_id', 'item_id', 'user_geohash', 'item_category', 'time', 'User_Buy_Ratio', 'Item_Hot_Ratio']]
 Y_data_set =  data.loc[0:9999, ['behavior_type']]
 #teX =  data.loc[20000:31999, ['user_id', 'item_id', 'user_geohash', 'item_category', 'time']]
 #teY =  data.loc[20000:31999, ['behavior_type']]
@@ -119,13 +141,13 @@ def model(X, w):
     return tf.matmul(X, w)
 
 # Input data
-X = tf.placeholder(tf.float64, shape=[None, 5]) # 5个特征：user_id, item_id, user_geohash, item_category, time
+X = tf.placeholder(tf.float64, shape=[None, 7]) # 5个特征：user_id, item_id, user_geohash, item_category, time + 2(User_Buy_Ratio, Item_Hot_Ratio)
 # need to shape [batch_size, 1] for nn.nce_loss
 Y = tf.placeholder(tf.float64, shape=[None, 4]) # 4个输出：1,2,3,4. 
 
-w = init_weights([5, 4]) # 5个特征，4个输出
+w = init_weights([7, 4]) # 7个特征，4个输出
 
-py_x = model(X, w) # [None,5] * [5, 4] = [None, 4]
+py_x = model(X, w) # [None,7] * [7, 4] = [None, 4]
 
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=py_x, labels=Y)) 
 train_op = tf.train.GradientDescentOptimizer(0.05).minimize(cost) 
@@ -139,7 +161,7 @@ with tf.Session() as sess:
     tf.global_variables_initializer().run()
 
     for i in range(100):
-        for start, end in zip(range(0, len(X_train), 512), range(512, len(X_train)+1, 512)): # (0,127,255,383,...,549999), (128, 256, 384, ..., 550000) -->
+        for start, end in zip(range(0, len(X_train), 1024), range(1024, len(X_train)+1, 1024)): # (0,127,255,383,...,549999), (128, 256, 384, ..., 550000) -->
                                                                                      # (0, 127), (128, 256),(255, 384), ... 
             sess.run(train_op, feed_dict={X: X_train[start:end], Y: Y_train[start:end]}) # 每次读取128条信息
         #print(i, np.argmax(Y_test, axis=1)[0:10], sess.run(predict_op, feed_dict={X: X_test})[0:10])
@@ -147,3 +169,4 @@ with tf.Session() as sess:
                         sess.run(predict_op, feed_dict={X: X_test}))) # 打印准确率
         #result = sess.run(predict_op, feed_dict={X: X_test})
         #print(i, result.shape)
+'''
