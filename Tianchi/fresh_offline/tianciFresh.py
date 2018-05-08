@@ -38,11 +38,13 @@ arr_data = np.array(user_behavior_set)
 #print(arr_data)
 '''
 # 利用pandas读取并处理csv
-data = pd.read_csv(r'fresh_comp_offline\\data_clean_feature_expended_10_features.csv')
+#data = pd.read_csv(r'fresh_comp_offline\\data_clean_feature_expended_10_features.csv')
+#data = pd.read_csv(r'fresh_comp_offline\\tianchi_fresh_comp_train_user_test.csv')
 # 去重 
-data = data.drop_duplicates() # 时间精度是1小时，用户有可能是一小时内点击多次，所以还是去掉一个小时内同一个商品的多次点击
+#data = data.drop_duplicates() # 时间精度是1小时，用户有可能是一小时内点击多次，所以还是去掉一个小时内同一个商品的多次点击
 
-print("Raw data info:\n", data.info())
+#print("Raw data info:\n")
+#data.info()
 #data['user_geohash'].convert_objects(convert_numeric=True)
 #data['user_geohash'] = pd.to_numeric(data['user_geohash'], errors="ignore" )
 #print(dict(data['user_geohash']))
@@ -134,11 +136,156 @@ for user_index in user_set:
 	    data['User_like_Cat_3'][data['user_id']==user_index] = tempCount[2][0]
 	else:
 	    data['User_like_Cat_3'][data['user_id']==user_index] = 0
- 
-data.to_csv('data_clean_feature_expended_10_features.csv', index=False)
+ '''
+
+#清洗掉爬虫用户：只点击，从来不购买的用户，#而且涉及商品类别大于120
+#data = data[(data['User_Buy_Ratio'] > 0)]
+#data_grp = data[data['item_category'].groupby(data['user_id']).count() < 120]
+#print(data['item_category'].groupby(data['user_id']).count())
+# & (data['behavior_type'][data['user_id']] > 1)] #\
+#	& (data['item_category'].groupby(data['user_id']).count() < 120)]
+
+#print("buy ratio > 0:\n")
+#data.head(50)
+#data.info()
+
+#因为是一个时间序列问题，取12月18日分割点，设定前一个星期的（12.12-12.17）样本里面的特征作为输入，
+# 12.18的买或者不买作为输出的target, 买为1正样本，不买为0负样本
+#data_before_1218 = data[(data['time'] >= 121200) & (data['time'] <= 121723)]
+#data_1218 = data[(data['time'] >= 121800) & (data['time'] <= 121823)]
+
+#user_set_before_1218 = data_before_1218.drop_duplicates()
+#data_1218 = data_1218.drop_duplicates()
+#print("data_before_1218:\n")
+#data_before_1218.info()
+#data_before_1218.to_csv('data_121200_121723.csv', index=False)
+#print("data_1218:\n")
+#data_1218.info()
+#data_1218.to_csv('data_121800_121823.csv', index=False)
+
+item_data =  pd.read_csv(r'fresh_comp_offline\\tianchi_fresh_comp_train_item.csv')
+item_set_data = item_data['item_id'].drop_duplicates()
+#print(item_set_data.count()) 总共有422858个商品
+user_data_before_1218 = pd.read_csv(r'fresh_comp_offline\\data_121200_121723.csv')
+# 去除train user中train_item中没有的item，不在train item中的样本没有意义
+user_data_before_1218 = user_data_before_1218[~user_data_before_1218['item_id'].isin(item_set_data)]
+print("User Data before 1212-1217:\n")
+user_data_before_1218.info()
+
+#print(user_data_before_1218['item_id'].drop_duplicates().count()) 总共有1350409个商品
+user_data_1218 = pd.read_csv(r'fresh_comp_offline\\data_121800_121823.csv')
+user_data_1218 = user_data_1218[~user_data_1218['item_id'].isin(item_set_data)]
+print("User Data 1218:\n")
+user_data_1218.info()
+
+ui_train_before_1218 = user_data_before_1218[['user_id','item_id','behavior_type','time']]
+ui_train_1218 = user_data_1218[['user_id','item_id','behavior_type','time']]
+print("ui_train:\n")
+ui_train_before_1218.info()
+
+# 前2周的behavior type 与 18日的购买之间的联系
+#      index       features    label
+#user_id, item_id  # feature   1/0 #1218是否购买
+
+# 特征1： behaviro_type = 1 的次数， 
+# 特征2： behaviro_type = 2 的次数， 
+# 特征3： behaviro_type = 3 的次数， 
+# 特征4： behaviro_type = 4 的次数， 
+#ui_item_feature = df['user_id','item_id','click_count','add_count','collect_count','buy_count', '1218_buy']
+
+
 '''
-print("Clean data info:\n", data.info())
-print(data.head(50))
+# print(user_data_before_1218['behavior_type'].value_counts()) values_counts用来统计某列的各种数字出现的次数
+# cumcount 样本值累计和, 第一次出现为0
+user_data_before_1218['cumcount'] = user_data_before_1218.groupby(['user_id', 'behavior_type']).cumcount() 
+# 去重，得到每个user的behaviro type的总数
+df_part_1_u_b_count_in_6 = user_data_before_1218.drop_duplicates(['user_id','behavior_type'], 'last')[['user_id','behavior_type','cumcount']] 
+# get_dummies就是one-hot 编码， 生成1-4个新的列
+df_part_1_u_b_count_in_6 = pd.get_dummies(df_part_1_u_b_count_in_6['behavior_type']).join(df_part_1_u_b_count_in_6[['user_id','cumcount']])
+# rename重命名
+df_part_1_u_b_count_in_6.rename(columns = {1:'behavior_type_1',
+                                           2:'behavior_type_2',
+                                           3:'behavior_type_3',
+                                           4:'behavior_type_4'}, inplace=True)
+
+df_part_1_u_b_count_in_6['u_b1_count_in_6'] = df_part_1_u_b_count_in_6['behavior_type_1'] * (df_part_1_u_b_count_in_6['cumcount']+1)
+df_part_1_u_b_count_in_6['u_b2_count_in_6'] = df_part_1_u_b_count_in_6['behavior_type_2'] * (df_part_1_u_b_count_in_6['cumcount']+1)
+df_part_1_u_b_count_in_6['u_b3_count_in_6'] = df_part_1_u_b_count_in_6['behavior_type_3'] * (df_part_1_u_b_count_in_6['cumcount']+1)
+df_part_1_u_b_count_in_6['u_b4_count_in_6'] = df_part_1_u_b_count_in_6['behavior_type_4'] * (df_part_1_u_b_count_in_6['cumcount']+1)
+print(df_part_1_u_b_count_in_6.head(20))
+# agg聚合，以用户分组，然后把每种行为的个数求和， 为什么其他列都消失了？
+df_part_1_u_b_count_in_6 = df_part_1_u_b_count_in_6.groupby('user_id').agg({'u_b1_count_in_6': np.sum,
+                                                                            'u_b2_count_in_6': np.sum,
+                                                                            'u_b3_count_in_6': np.sum,
+                                                                            'u_b4_count_in_6': np.sum})
+# reset_index 老的index user_id变成列，新的index为0,1,2,3...
+df_part_1_u_b_count_in_6.reset_index(inplace = True)
+# 增加新的列 总的行为数
+df_part_1_u_b_count_in_6['u_b_count_in_6'] = df_part_1_u_b_count_in_6[['u_b1_count_in_6',
+                                                                       'u_b2_count_in_6',
+                                                                       'u_b3_count_in_6',
+                                                                       'u_b4_count_in_6']].apply(lambda x: x.sum(), axis = 1)
+print(df_part_1_u_b_count_in_6.head(20))
+'''
+
+# 计算user, 对item的各中行为的数量
+ui_train_before_1218['cumcount'] = ui_train_before_1218.groupby(['user_id', 'item_id', 'behavior_type']).cumcount()
+#print(ui_train_before_1218.head(71))
+# 去重
+ui_b_count_before_1218 = ui_train_before_1218.drop_duplicates(['user_id','item_id','behavior_type'],'last')[['user_id','item_id','behavior_type','cumcount']]
+print(ui_b_count_before_1218.head(71))
+ui_b_count_before_1218 = pd.get_dummies(ui_b_count_before_1218['behavior_type']).join(ui_b_count_before_1218[['user_id','item_id','cumcount']])
+ui_b_count_before_1218.rename(columns = {1:'behavior_type_1',
+                                            2:'behavior_type_2',
+                                            3:'behavior_type_3',
+                                            4:'behavior_type_4'}, inplace=True)  
+ui_b_count_before_1218['ui_b1_count_in_week'] = ui_b_count_before_1218['behavior_type_1'] * (ui_b_count_before_1218['cumcount']+1)
+ui_b_count_before_1218['ui_b2_count_in_week'] = ui_b_count_before_1218['behavior_type_2'] * (ui_b_count_before_1218['cumcount']+1)
+ui_b_count_before_1218['ui_b3_count_in_week'] = ui_b_count_before_1218['behavior_type_3'] * (ui_b_count_before_1218['cumcount']+1)
+ui_b_count_before_1218['ui_b4_count_in_week'] = ui_b_count_before_1218['behavior_type_4'] * (ui_b_count_before_1218['cumcount']+1)
+ui_b_count_before_1218 = ui_b_count_before_1218[['user_id', 
+                                                       'item_id', 
+                                                       'ui_b1_count_in_week', 
+                                                       'ui_b2_count_in_week', 
+                                                       'ui_b3_count_in_week',
+                                                       'ui_b4_count_in_week']]
+ui_b_count_before_1218 = ui_b_count_before_1218.groupby(['user_id', 'item_id']).agg({'ui_b1_count_in_week': np.sum,
+                                                                                           'ui_b2_count_in_week': np.sum,
+                                                                                           'ui_b3_count_in_week': np.sum,
+                                                                                           'ui_b4_count_in_week': np.sum})
+ui_b_count_before_1218.reset_index(inplace = True)
+print(ui_b_count_before_1218.head(71))
+ui_b_count_before_1218.to_csv('ui_b_count_before_1218.csv', index=False)
+
+# 在1218中标记label，购买了为1，不购买为0
+ui_train_1218['buy_or_not'] = 0
+ui_train_1218['buy_or_not'].loc[ui_train_1218['behavior_type'] == 4] = 1
+# 去重，1218一天中不同时间对同一个商品用冲突的行为，有时候买有时候点击， 用agg把buy_or_not相加，大于等于1的则说明最终还是买了
+ui_train_1218= ui_train_1218.groupby(['user_id', 'item_id']).agg({'buy_or_not':np.sum})
+ui_train_1218.reset_index(inplace = True)
+ui_train_1218['buy_or_not'].loc[ui_train_1218['buy_or_not'] >= 1] = 1
+ui_train_1218 = ui_train_1218[['user_id', 'item_id', 'buy_or_not']]
+print(ui_train_1218.head(50))
+ui_train_1218.to_csv('ui_train_1218.csv', index=False)
+
+ui_item_feature_and_label =  pd.merge(ui_b_count_before_1218, ui_train_1218, how='left', on=['user_id', 'item_id'])
+# 去掉merge造成的一些nan值
+ui_item_feature_and_label = ui_item_feature_and_label[ui_item_feature_and_label['buy_or_not'] >= 0]
+ui_item_feature_and_label = ui_item_feature_and_label.drop_duplicates()
+print(ui_item_feature_and_label.info())
+ui_item_feature_and_label.to_csv('ui_item_feature_and_label.csv', index=False)
+
+#print("Data before 1218 value_counts:\n")
+#print(data_before_1218['behavior_type'].value_counts())
+#print(data_before_1218['time'].value_counts())
+
+#data.to_csv('data_clean_feature_expended_10_features_clean.csv', index=False)
+
+#print("Clean data info:\n"）
+#data.info()
+#print(data.head(50))
+
+'''
 #初始化
 batch_size = 1024
 
@@ -217,3 +364,4 @@ with tf.Session() as sess:
                         #sess.run(predict_op, feed_dict={X: X_test}))) # 打印准确率
         #result = sess.run(predict_op, feed_dict={X: X_test})
         #print(i, result.shape)
+'''
