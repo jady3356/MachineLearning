@@ -162,28 +162,59 @@ for user_index in user_set:
 #print("data_1218:\n")
 #data_1218.info()
 #data_1218.to_csv('data_121800_121823.csv', index=False)
+'''
+data = pd.read_csv(r'fresh_comp_offline\\data_clean_feature_expended_10_features.csv')
+data = data[['user_id','item_id','behavior_type','time']]
+data = data.drop_duplicates()
+data.info()
+
+data_1216_1217 = data[(data['time'] >= 121600) & (data['time'] <= 121723)]
+data_1216_1217 = data_1216_1217.drop_duplicates()
+data_1216_1217.info()
+data_1216_1217.to_csv('data_1216_1217.csv', index=False)
+
+data_1218 = data[(data['time'] >= 121800) & (data['time'] <= 121823)]
+data_1218 = data_1218.drop_duplicates()
+data_1218.info()
+data_1218.to_csv('data_1218.csv', index=False)
+
+data_1217_1218 = data[(data['time'] >= 121700) & (data['time'] <= 121823)]
+data_1217_1218 = data_1217_1218.drop_duplicates()
+data_1217_1218.info()
+data_1217_1218.to_csv('data_1217_1218.csv', index=False)
+'''
+
+#print("data_before_1218:\n")
+#data_before_1218.info()
+#data_before_1218.to_csv('data_121200_121723.csv', index=False)
+#print("data_1218:\n")
+#data_1218.info()
+#data_1218.to_csv('data_121800_121823.csv', index=False)
 
 item_data =  pd.read_csv(r'fresh_comp_offline\\tianchi_fresh_comp_train_item.csv')
 item_set_data = item_data['item_id'].drop_duplicates()
 #print(item_set_data.count()) 总共有422858个商品
-user_data_before_1218 = pd.read_csv(r'fresh_comp_offline\\data_121200_121723.csv')
+user_data_1216_1217 = pd.read_csv(r'fresh_comp_offline\\data_1216_1217.csv')
+
 # 去除train user中train_item中没有的item，不在train item中的样本没有意义
-user_data_before_1218 = user_data_before_1218[~user_data_before_1218['item_id'].isin(item_set_data)]
-print("User Data before 1212-1217:\n")
-user_data_before_1218.info()
+user_data_1216_1217 = user_data_1216_1217[user_data_1216_1217['item_id'].isin(item_set_data)]
+#print(user_data_1216_1217.head(30))
+print("User Data 1216-1217:\n")
+user_data_1216_1217.info() # 70313 行
+user_data_1216_1217.to_csv('data_1216_1217_item_filtered.csv', index=False)
 
 #print(user_data_before_1218['item_id'].drop_duplicates().count()) 总共有1350409个商品
-user_data_1218 = pd.read_csv(r'fresh_comp_offline\\data_121800_121823.csv')
-user_data_1218 = user_data_1218[~user_data_1218['item_id'].isin(item_set_data)]
+user_data_1218 = pd.read_csv(r'fresh_comp_offline\\data_1218.csv')
+user_data_1218 = user_data_1218[user_data_1218['item_id'].isin(item_set_data)]
 print("User Data 1218:\n")
-user_data_1218.info()
+user_data_1218.info() # 34111 行
 
-ui_train_before_1218 = user_data_before_1218[['user_id','item_id','behavior_type','time']]
-ui_train_1218 = user_data_1218[['user_id','item_id','behavior_type','time']]
-print("ui_train:\n")
-ui_train_before_1218.info()
+#ui_train_before_1218 = user_data_before_1218[['user_id','item_id','behavior_type','time']]
+#ui_train_1218 = user_data_1218[['user_id','item_id','behavior_type','time']]
+#print("ui_train:\n")
+#user_data_1216_1217.info()
 
-# 前2周的behavior type 与 18日的购买之间的联系
+# 前1周的behavior type 与 18日的购买之间的联系
 #      index       features    label
 #user_id, item_id  # feature   1/0 #1218是否购买
 
@@ -191,7 +222,6 @@ ui_train_before_1218.info()
 # 特征2： behaviro_type = 2 的次数， 
 # 特征3： behaviro_type = 3 的次数， 
 # 特征4： behaviro_type = 4 的次数， 
-#ui_item_feature = df['user_id','item_id','click_count','add_count','collect_count','buy_count', '1218_buy']
 
 
 '''
@@ -227,53 +257,168 @@ df_part_1_u_b_count_in_6['u_b_count_in_6'] = df_part_1_u_b_count_in_6[['u_b1_cou
                                                                        'u_b4_count_in_6']].apply(lambda x: x.sum(), axis = 1)
 print(df_part_1_u_b_count_in_6.head(20))
 '''
-
-# 计算user, 对item的各中行为的数量
-ui_train_before_1218['cumcount'] = ui_train_before_1218.groupby(['user_id', 'item_id', 'behavior_type']).cumcount()
+####################################
+##############训练输入数据 START######################
+####################################
+# 计算user, 对item的各种行为的数量
+user_data_1216_1217['cumcount'] = user_data_1216_1217.groupby(['user_id', 'item_id', 'behavior_type']).cumcount()
 #print(ui_train_before_1218.head(71))
 # 去重
-ui_b_count_before_1218 = ui_train_before_1218.drop_duplicates(['user_id','item_id','behavior_type'],'last')[['user_id','item_id','behavior_type','cumcount']]
-print(ui_b_count_before_1218.head(71))
-ui_b_count_before_1218 = pd.get_dummies(ui_b_count_before_1218['behavior_type']).join(ui_b_count_before_1218[['user_id','item_id','cumcount']])
-ui_b_count_before_1218.rename(columns = {1:'behavior_type_1',
+ui_b_count_1216_1217 = user_data_1216_1217.drop_duplicates(['user_id','item_id','behavior_type'],'last')[['user_id','item_id','behavior_type','cumcount']]
+#print(ui_b_count_1216_1217.head(50))
+ui_b_count_1216_1217 = pd.get_dummies(ui_b_count_1216_1217['behavior_type']).join(ui_b_count_1216_1217[['user_id','item_id','cumcount']])
+ui_b_count_1216_1217.rename(columns = {1:'behavior_type_1',
                                             2:'behavior_type_2',
                                             3:'behavior_type_3',
                                             4:'behavior_type_4'}, inplace=True)  
-ui_b_count_before_1218['ui_b1_count_in_week'] = ui_b_count_before_1218['behavior_type_1'] * (ui_b_count_before_1218['cumcount']+1)
-ui_b_count_before_1218['ui_b2_count_in_week'] = ui_b_count_before_1218['behavior_type_2'] * (ui_b_count_before_1218['cumcount']+1)
-ui_b_count_before_1218['ui_b3_count_in_week'] = ui_b_count_before_1218['behavior_type_3'] * (ui_b_count_before_1218['cumcount']+1)
-ui_b_count_before_1218['ui_b4_count_in_week'] = ui_b_count_before_1218['behavior_type_4'] * (ui_b_count_before_1218['cumcount']+1)
-ui_b_count_before_1218 = ui_b_count_before_1218[['user_id', 
+ui_b_count_1216_1217['ui_b1_count_in_week'] = ui_b_count_1216_1217['behavior_type_1'] * (ui_b_count_1216_1217['cumcount']+1)
+ui_b_count_1216_1217['ui_b2_count_in_week'] = ui_b_count_1216_1217['behavior_type_2'] * (ui_b_count_1216_1217['cumcount']+1)
+ui_b_count_1216_1217['ui_b3_count_in_week'] = ui_b_count_1216_1217['behavior_type_3'] * (ui_b_count_1216_1217['cumcount']+1)
+ui_b_count_1216_1217['ui_b4_count_in_week'] = ui_b_count_1216_1217['behavior_type_4'] * (ui_b_count_1216_1217['cumcount']+1)
+ui_b_count_1216_1217 = ui_b_count_1216_1217[['user_id', 
                                                        'item_id', 
                                                        'ui_b1_count_in_week', 
                                                        'ui_b2_count_in_week', 
                                                        'ui_b3_count_in_week',
                                                        'ui_b4_count_in_week']]
-ui_b_count_before_1218 = ui_b_count_before_1218.groupby(['user_id', 'item_id']).agg({'ui_b1_count_in_week': np.sum,
+ui_b_count_1216_1217 = ui_b_count_1216_1217.groupby(['user_id', 'item_id']).agg({'ui_b1_count_in_week': np.sum,
                                                                                            'ui_b2_count_in_week': np.sum,
                                                                                            'ui_b3_count_in_week': np.sum,
                                                                                            'ui_b4_count_in_week': np.sum})
-ui_b_count_before_1218.reset_index(inplace = True)
-print(ui_b_count_before_1218.head(71))
-ui_b_count_before_1218.to_csv('ui_b_count_before_1218.csv', index=False)
+ui_b_count_1216_1217.reset_index(inplace = True)
+#print(ui_b_count_1216_1217.head(71))
+ui_b_count_1216_1217.to_csv('ui_b_count_1216_1217.csv', index=False)
 
 # 在1218中标记label，购买了为1，不购买为0
-ui_train_1218['buy_or_not'] = 0
-ui_train_1218['buy_or_not'].loc[ui_train_1218['behavior_type'] == 4] = 1
+user_data_1218['buy_or_not'] = 0
+user_data_1218['buy_or_not'].loc[user_data_1218['behavior_type'] == 4] = 1
 # 去重，1218一天中不同时间对同一个商品用冲突的行为，有时候买有时候点击， 用agg把buy_or_not相加，大于等于1的则说明最终还是买了
-ui_train_1218= ui_train_1218.groupby(['user_id', 'item_id']).agg({'buy_or_not':np.sum})
-ui_train_1218.reset_index(inplace = True)
-ui_train_1218['buy_or_not'].loc[ui_train_1218['buy_or_not'] >= 1] = 1
-ui_train_1218 = ui_train_1218[['user_id', 'item_id', 'buy_or_not']]
-print(ui_train_1218.head(50))
-ui_train_1218.to_csv('ui_train_1218.csv', index=False)
+user_data_1218= user_data_1218.groupby(['user_id', 'item_id']).agg({'buy_or_not':np.sum})
+user_data_1218.reset_index(inplace = True)
+user_data_1218['buy_or_not'].loc[user_data_1218['buy_or_not'] >= 1] = 1
+user_data_1218 = user_data_1218[['user_id', 'item_id', 'buy_or_not']]
+#print(user_data_1218.head(50))
+user_data_1218.to_csv('user_data_1218.csv', index=False)
 
-ui_item_feature_and_label =  pd.merge(ui_b_count_before_1218, ui_train_1218, how='left', on=['user_id', 'item_id'])
-# 去掉merge造成的一些nan值
-ui_item_feature_and_label = ui_item_feature_and_label[ui_item_feature_and_label['buy_or_not'] >= 0]
+ui_item_feature_and_label =  pd.merge(ui_b_count_1216_1217, user_data_1218, how='left', on=['user_id', 'item_id'])
+#print(ui_item_feature_and_label.head(50))
+# 将buy_or_not的nan值换成0，因为1218没有行为的肯定即为没有买
+ui_item_feature_and_label.fillna(0, inplace = True)
 ui_item_feature_and_label = ui_item_feature_and_label.drop_duplicates()
+#print(ui_item_feature_and_label.head(50))
+# 特征扩充，点击转化率，收藏转化率，购物车转化率，购买率
+ui_item_feature_and_label['b1_ratio'] = ui_item_feature_and_label['ui_b1_count_in_week']/(ui_item_feature_and_label['ui_b1_count_in_week'] + \
+	ui_item_feature_and_label['ui_b2_count_in_week'] + ui_item_feature_and_label['ui_b3_count_in_week'] + ui_item_feature_and_label['ui_b4_count_in_week'])
+ui_item_feature_and_label['b2_ratio'] = ui_item_feature_and_label['ui_b2_count_in_week']/(ui_item_feature_and_label['ui_b1_count_in_week'] + \
+	ui_item_feature_and_label['ui_b2_count_in_week'] + ui_item_feature_and_label['ui_b3_count_in_week'] + ui_item_feature_and_label['ui_b4_count_in_week'])
+ui_item_feature_and_label['b3_ratio'] = ui_item_feature_and_label['ui_b3_count_in_week']/(ui_item_feature_and_label['ui_b1_count_in_week'] + \
+	ui_item_feature_and_label['ui_b2_count_in_week'] + ui_item_feature_and_label['ui_b3_count_in_week'] + ui_item_feature_and_label['ui_b4_count_in_week'])
+ui_item_feature_and_label['b4_ratio'] = ui_item_feature_and_label['ui_b4_count_in_week']/(ui_item_feature_and_label['ui_b1_count_in_week'] + \
+	ui_item_feature_and_label['ui_b2_count_in_week'] + ui_item_feature_and_label['ui_b3_count_in_week'] + ui_item_feature_and_label['ui_b4_count_in_week'])
 print(ui_item_feature_and_label.info())
 ui_item_feature_and_label.to_csv('ui_item_feature_and_label.csv', index=False)
+
+
+# Module
+x_data_set = ui_item_feature_and_label[['ui_b1_count_in_week', 'ui_b2_count_in_week', 'ui_b3_count_in_week', 'ui_b4_count_in_week',\
+             'b1_ratio', 'b2_ratio','b3_ratio','b4_ratio']]
+x_data_set = (x_data_set - x_data_set.mean()) / (x_data_set.std()) # 归一化
+y_data_set = ui_item_feature_and_label[['buy_or_not']]
+# encode class values as integers
+encoder = LabelEncoder()
+encoded_y = encoder.fit_transform(y_data_set)
+# convert integers to dummy variables (one hot encoding)
+dummy_y = np_utils.to_categorical(encoded_y)
+#用sklearn的train_test_split来随机划分训练和测试集
+X_train, X_test, Y_train, Y_test = train_test_split(x_data_set, dummy_y, test_size=0.1, random_state=0)
+
+print("X_train:", X_train.shape) 
+print("Y_train:", Y_train.shape) 
+print("X_test:", X_test.shape)
+print("Y_test:", Y_test.shape)
+####################################
+##############训练输入数据 END######################
+####################################
+
+
+
+
+####################################
+############## 预测输入数据 START ######################
+####################################
+
+user_data_1217_1218 = pd.read_csv(r'fresh_comp_offline\\data_1217_1218.csv')
+# 去除train user中train_item中没有的item，不在train item中的样本没有意义
+print("User raw Data 1217-1218:\n")
+user_data_1217_1218.info()
+#print(user_data_1217_1218.head(20))
+user_data_1216_1217_ui_index = user_data_1216_1217[['user_id','item_id']]
+user_data_1216_1217_ui_index = user_data_1216_1217_ui_index.drop_duplicates()
+
+user_data_1217_1218 = pd.merge(user_data_1217_1218, user_data_1216_1217_ui_index, how='inner',on=['user_id', 'item_id'])
+
+print("1217-1218 ui index filtered: \n")
+# 根据1216-1217中的ui_index 来过滤1217-1218中的行，这样才能用1216-1217训练好的模型
+#user_data_1217_1218 = user_data_1217_1218[(user_data_1217_1218['user_id'].isin(user_data_1216_1217_ui_index['user_id'])) & \
+#                                          (user_data_1217_1218['item_id'].isin(user_data_1216_1217_ui_index['item_id']))]
+
+#user_data_1217_1218	= user_data_1217_1218[(user_data_1217_1218['item_id'].isin(user_data_1216_1217_ui_index['item_id']))]
+user_data_1217_1218.info()
+#print(user_data_1217_1218.head(20))
+
+user_data_1217_1218.to_csv('user_data_1217_1218_match_1216_1217.csv', index=False)
+# 计算user, 对item的各种行为的数量
+user_data_1217_1218['cumcount'] = user_data_1217_1218.groupby(['user_id', 'item_id', 'behavior_type']).cumcount()
+#print(ui_train_before_1218.head(71))
+# 去重
+ui_b_count_1217_1218 = user_data_1217_1218.drop_duplicates(['user_id','item_id','behavior_type'],'last')[['user_id','item_id','behavior_type','cumcount']]
+#print(ui_b_count_1217_1218.head(50))
+ui_b_count_1217_1218 = pd.get_dummies(ui_b_count_1217_1218['behavior_type']).join(ui_b_count_1217_1218[['user_id','item_id','cumcount']])
+ui_b_count_1217_1218.rename(columns = {1:'behavior_type_1',
+                                            2:'behavior_type_2',
+                                            3:'behavior_type_3',
+                                            4:'behavior_type_4'}, inplace=True)  
+ui_b_count_1217_1218['ui_b1_count_in_week'] = ui_b_count_1217_1218['behavior_type_1'] * (ui_b_count_1217_1218['cumcount']+1)
+ui_b_count_1217_1218['ui_b2_count_in_week'] = ui_b_count_1217_1218['behavior_type_2'] * (ui_b_count_1217_1218['cumcount']+1)
+ui_b_count_1217_1218['ui_b3_count_in_week'] = ui_b_count_1217_1218['behavior_type_3'] * (ui_b_count_1217_1218['cumcount']+1)
+ui_b_count_1217_1218['ui_b4_count_in_week'] = ui_b_count_1217_1218['behavior_type_4'] * (ui_b_count_1217_1218['cumcount']+1)
+ui_b_count_1217_1218 = ui_b_count_1217_1218[['user_id', 
+                                                       'item_id', 
+                                                       'ui_b1_count_in_week', 
+                                                       'ui_b2_count_in_week', 
+                                                       'ui_b3_count_in_week',
+                                                       'ui_b4_count_in_week']]
+ui_b_count_1217_1218 = ui_b_count_1217_1218.groupby(['user_id', 'item_id']).agg({'ui_b1_count_in_week': np.sum,
+                                                                                           'ui_b2_count_in_week': np.sum,
+                                                                                           'ui_b3_count_in_week': np.sum,
+                                                                                           'ui_b4_count_in_week': np.sum})
+ui_b_count_1217_1218.reset_index(inplace = True)
+
+ui_b_count_1217_1218['b1_ratio'] = ui_b_count_1217_1218['ui_b1_count_in_week']/(ui_b_count_1217_1218['ui_b1_count_in_week'] + \
+	ui_b_count_1217_1218['ui_b2_count_in_week'] + ui_b_count_1217_1218['ui_b3_count_in_week'] + ui_b_count_1217_1218['ui_b4_count_in_week'])
+ui_b_count_1217_1218['b2_ratio'] = ui_b_count_1217_1218['ui_b2_count_in_week']/(ui_b_count_1217_1218['ui_b1_count_in_week'] + \
+	ui_b_count_1217_1218['ui_b2_count_in_week'] + ui_b_count_1217_1218['ui_b3_count_in_week'] + ui_b_count_1217_1218['ui_b4_count_in_week'])
+ui_b_count_1217_1218['b3_ratio'] = ui_b_count_1217_1218['ui_b3_count_in_week']/(ui_b_count_1217_1218['ui_b1_count_in_week'] + \
+	ui_b_count_1217_1218['ui_b2_count_in_week'] + ui_b_count_1217_1218['ui_b3_count_in_week'] + ui_b_count_1217_1218['ui_b4_count_in_week'])
+ui_b_count_1217_1218['b4_ratio'] = ui_b_count_1217_1218['ui_b4_count_in_week']/(ui_b_count_1217_1218['ui_b1_count_in_week'] + \
+	ui_b_count_1217_1218['ui_b2_count_in_week'] + ui_b_count_1217_1218['ui_b3_count_in_week'] + ui_b_count_1217_1218['ui_b4_count_in_week'])
+#print(ui_b_count_1216_1217.head(50))
+ui_b_count_1217_1218.to_csv('ui_b_count_1217_1218.csv', index=False)
+
+# 准备预测数据
+predict_data_set = ui_b_count_1217_1218[['ui_b1_count_in_week', 'ui_b2_count_in_week', 'ui_b3_count_in_week', 'ui_b4_count_in_week',\
+             'b1_ratio', 'b2_ratio','b3_ratio','b4_ratio']]
+predict_data_set = (predict_data_set - predict_data_set.mean()) / (predict_data_set.std()) # 归一化
+
+
+#x_data_set = ui_b_count_1217_1218[['ui_b1_count_in_week', 'ui_b2_count_in_week', 'ui_b3_count_in_week', 'ui_b4_count_in_week',\
+#             'b1_ratio', 'b2_ratio','b3_ratio','b4_ratio']]
+#x_data_set = (x_data_set - x_data_set.mean()) / (x_data_set.std()) # 归一化
+
+####################################
+################ 预测数据 END ####################
+####################################
+
 
 #print("Data before 1218 value_counts:\n")
 #print(data_before_1218['behavior_type'].value_counts())
@@ -310,27 +455,27 @@ print("Y_train:", Y_train.shape)
 print("X_test:", X_test.shape)
 print("Y_test:", Y_test.shape)
 #print("Y_test[0:50]:", Y_test[0:40])
-
+'''
 #定义模型
 def init_weights(shape, name):
-    return tf.Variable(tf.random_normal(shape, stddev=0.01, dtype=tf.float64), name=name) # 随机初始化w, stddev表示标准差. 输出为(7, 4)的tensor, 所有的值正态分布在-0.02到0.02之间
+    return tf.Variable(tf.random_normal(shape, stddev=0.001, dtype=tf.float64), name=name) # 随机初始化w, stddev表示标准差. 输出为(7, 4)的tensor, 所有的值正态分布在-0.02到0.02之间
 
 def model(X, w):
     return tf.matmul(X, w)
 
 # Input data
-X = tf.placeholder(tf.float64, shape=[None, 10], name='X') # 7个特征：user_id, item_id, user_geohash, item_category, time + 2(User_Buy_Ratio, Item_Hot_Ratio)
+X = tf.placeholder(tf.float64, shape=[None, 8], name='X') # 7个特征：user_id, item_id, user_geohash, item_category, time + 2(User_Buy_Ratio, Item_Hot_Ratio)
 # need to shape [batch_size, 1] for nn.nce_loss
-Y = tf.placeholder(tf.float64, shape=[None, 4], name='Y') # 4个输出：1,2,3,4. 
+Y = tf.placeholder(tf.float64, shape=[None, 2], name='Y') # 4个输出：1,2,3,4. 
 
-w = init_weights([10, 4],'w') # 7个特征，4个输出
+w = init_weights([8, 2],'w') # 7个特征，4个输出
 #b = tf.Variable(tf.truncated_normal([4], dtype=tf.float64))
 
 py_x = model(X, w) # [None,7] * [7, 4] = [None, 4]
 
 with tf.name_scope("cost"):
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=py_x, labels=Y)) 
-    train_op = tf.train.GradientDescentOptimizer(0.00002).minimize(cost) 
+    train_op = tf.train.GradientDescentOptimizer(0.000001).minimize(cost) 
     tf.summary.scalar("cost", cost)
 
 with tf.name_scope("accuracy"):
@@ -351,7 +496,7 @@ with tf.Session() as sess:
     saver = tf.train.Saver(tf.global_variables()) 
 
     for i in range(100):
-        for start, end in zip(range(0, len(X_train), 512), range(512, len(X_train)+1, 512)): # (0,127,255,383,...,549999), (128, 256, 384, ..., 550000) -->
+        for start, end in zip(range(0, len(X_train), 256), range(256, len(X_train)+1, 256)): # (0,127,255,383,...,549999), (128, 256, 384, ..., 550000) -->
                                                                                      # (0, 127), (128, 256),(255, 384), ... 
             sess.run(train_op, feed_dict={X: X_train[start:end], Y: Y_train[start:end]}) # 每次读取128条信息
         #print(i, np.argmax(Y_test, axis=1)[0:10], sess.run(predict_op, feed_dict={X: X_test})[0:10])
@@ -359,9 +504,12 @@ with tf.Session() as sess:
         writer.add_summary(summary, i)  # Write summary
         saver.save(sess, 'model/tianchi.module') 
         print(i, acc)                   # Report the accuracy
-
+    # 开始预测
+    ui_b_count_1217_1218['buy_or_not'] = sess.run(tf.argmax(py_x, 1), feed_dict={X: predict_data_set})
+    ui_b_count_1217_1218 = ui_b_count_1217_1218[ui_b_count_1217_1218['buy_or_not']==1]
+    ui_b_count_1217_1218 = ui_b_count_1217_1218[['user_id', 'item_id']]
+    ui_b_count_1217_1218.to_csv('result.csv', index=False)
         #print(i, np.mean(np.argmax(Y_test, axis=1) ==
                         #sess.run(predict_op, feed_dict={X: X_test}))) # 打印准确率
         #result = sess.run(predict_op, feed_dict={X: X_test})
         #print(i, result.shape)
-'''
