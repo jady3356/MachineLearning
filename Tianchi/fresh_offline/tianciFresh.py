@@ -507,8 +507,9 @@ with tf.Session() as sess:
     # 开始预测
     ui_b_count_1217_1218['buy_or_not'] = sess.run(tf.argmax(py_x, 1), feed_dict={X: predict_data_set})
     ui_b_count_1217_1218 = ui_b_count_1217_1218[ui_b_count_1217_1218['buy_or_not']==1]
-    ui_b_count_1217_1218 = ui_b_count_1217_1218[['user_id', 'item_id']]
-    ui_b_count_1217_1218.to_csv('result.csv', index=False)
+    ui_b_count_1217_1218 = ui_b_count_1217_1218[['user_id', 'item_id']].astype(str)
+    print(ui_b_count_1217_1218.info())
+    ui_b_count_1217_1218.to_csv('tianchi_mobile_recommendation_predict.csv',index=False, encoding='utf-8')
         #print(i, np.mean(np.argmax(Y_test, axis=1) ==
                         #sess.run(predict_op, feed_dict={X: X_test}))) # 打印准确率
         #result = sess.run(predict_op, feed_dict={X: X_test})
