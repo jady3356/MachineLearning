@@ -195,7 +195,6 @@ item_data =  pd.read_csv(r'fresh_comp_offline\\tianchi_fresh_comp_train_item.csv
 item_set_data = item_data['item_id'].drop_duplicates()
 #print(item_set_data.count()) 总共有422858个商品
 user_data_1216_1217 = pd.read_csv(r'fresh_comp_offline\\data_1216_1217.csv')
-
 # 去除train user中train_item中没有的item，不在train item中的样本没有意义
 user_data_1216_1217 = user_data_1216_1217[user_data_1216_1217['item_id'].isin(item_set_data)]
 #print(user_data_1216_1217.head(30))
@@ -348,10 +347,12 @@ print("Y_test:", Y_test.shape)
 ####################################
 
 user_data_1217_1218 = pd.read_csv(r'fresh_comp_offline\\data_1217_1218.csv')
+user_data_1217_1218 = user_data_1217_1218[user_data_1217_1218['item_id'].isin(item_set_data)]
 # 去除train user中train_item中没有的item，不在train item中的样本没有意义
 print("User raw Data 1217-1218:\n")
 user_data_1217_1218.info()
 #print(user_data_1217_1218.head(20))
+'''
 user_data_1216_1217_ui_index = user_data_1216_1217[['user_id','item_id']]
 user_data_1216_1217_ui_index = user_data_1216_1217_ui_index.drop_duplicates()
 
@@ -367,6 +368,7 @@ user_data_1217_1218.info()
 #print(user_data_1217_1218.head(20))
 
 user_data_1217_1218.to_csv('user_data_1217_1218_match_1216_1217.csv', index=False)
+'''
 # 计算user, 对item的各种行为的数量
 user_data_1217_1218['cumcount'] = user_data_1217_1218.groupby(['user_id', 'item_id', 'behavior_type']).cumcount()
 #print(ui_train_before_1218.head(71))
@@ -405,15 +407,11 @@ ui_b_count_1217_1218['b4_ratio'] = ui_b_count_1217_1218['ui_b4_count_in_week']/(
 #print(ui_b_count_1216_1217.head(50))
 ui_b_count_1217_1218.to_csv('ui_b_count_1217_1218.csv', index=False)
 
-# 准备预测数据
+# 整理预测数据
 predict_data_set = ui_b_count_1217_1218[['ui_b1_count_in_week', 'ui_b2_count_in_week', 'ui_b3_count_in_week', 'ui_b4_count_in_week',\
              'b1_ratio', 'b2_ratio','b3_ratio','b4_ratio']]
 predict_data_set = (predict_data_set - predict_data_set.mean()) / (predict_data_set.std()) # 归一化
 
-
-#x_data_set = ui_b_count_1217_1218[['ui_b1_count_in_week', 'ui_b2_count_in_week', 'ui_b3_count_in_week', 'ui_b4_count_in_week',\
-#             'b1_ratio', 'b2_ratio','b3_ratio','b4_ratio']]
-#x_data_set = (x_data_set - x_data_set.mean()) / (x_data_set.std()) # 归一化
 
 ####################################
 ################ 预测数据 END ####################
@@ -458,24 +456,24 @@ print("Y_test:", Y_test.shape)
 '''
 #定义模型
 def init_weights(shape, name):
-    return tf.Variable(tf.random_normal(shape, stddev=0.001, dtype=tf.float64), name=name) # 随机初始化w, stddev表示标准差. 输出为(7, 4)的tensor, 所有的值正态分布在-0.02到0.02之间
+    return tf.Variable(tf.random_normal(shape, stddev=1, dtype=tf.float64), name=name) # 随机初始化w, stddev表示标准差. 输出为(8, 2)的tensor, 所有的值正态分布在-0.02到0.02之间
 
 def model(X, w):
     return tf.matmul(X, w)
 
 # Input data
-X = tf.placeholder(tf.float64, shape=[None, 8], name='X') # 7个特征：user_id, item_id, user_geohash, item_category, time + 2(User_Buy_Ratio, Item_Hot_Ratio)
+X = tf.placeholder(tf.float64, shape=[None, 8], name='X') # 8个特征：user_id, item_id, user_geohash, item_category, time + 2(User_Buy_Ratio, Item_Hot_Ratio)
 # need to shape [batch_size, 1] for nn.nce_loss
-Y = tf.placeholder(tf.float64, shape=[None, 2], name='Y') # 4个输出：1,2,3,4. 
+Y = tf.placeholder(tf.float64, shape=[None, 2], name='Y') # 2个输出：0,1. 
 
-w = init_weights([8, 2],'w') # 7个特征，4个输出
-#b = tf.Variable(tf.truncated_normal([4], dtype=tf.float64))
+w = init_weights([8, 2],'w') # 8个特征，2个输出
+#b = tf.Variable(tf.truncated_normal([2], dtype=tf.float64))
 
-py_x = model(X, w) # [None,7] * [7, 4] = [None, 4]
+py_x = model(X, w) # [None,8] * [8, 2] = [None, 2]
 
 with tf.name_scope("cost"):
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=py_x, labels=Y)) 
-    train_op = tf.train.GradientDescentOptimizer(0.000001).minimize(cost) 
+    train_op = tf.train.GradientDescentOptimizer(0.05).minimize(cost) 
     tf.summary.scalar("cost", cost)
 
 with tf.name_scope("accuracy"):
@@ -496,7 +494,7 @@ with tf.Session() as sess:
     saver = tf.train.Saver(tf.global_variables()) 
 
     for i in range(100):
-        for start, end in zip(range(0, len(X_train), 256), range(256, len(X_train)+1, 256)): # (0,127,255,383,...,549999), (128, 256, 384, ..., 550000) -->
+        for start, end in zip(range(0, len(X_train),256), range(256, len(X_train)+1, 256)): # (0,127,255,383,...,549999), (128, 256, 384, ..., 550000) -->
                                                                                      # (0, 127), (128, 256),(255, 384), ... 
             sess.run(train_op, feed_dict={X: X_train[start:end], Y: Y_train[start:end]}) # 每次读取128条信息
         #print(i, np.argmax(Y_test, axis=1)[0:10], sess.run(predict_op, feed_dict={X: X_test})[0:10])
@@ -507,9 +505,12 @@ with tf.Session() as sess:
     # 开始预测
     ui_b_count_1217_1218['buy_or_not'] = sess.run(tf.argmax(py_x, 1), feed_dict={X: predict_data_set})
     ui_b_count_1217_1218 = ui_b_count_1217_1218[ui_b_count_1217_1218['buy_or_not']==1]
-    ui_b_count_1217_1218 = ui_b_count_1217_1218[['user_id', 'item_id']].astype(str)
+    ui_b_count_1217_1218 = ui_b_count_1217_1218[['user_id', 'item_id']].astype('int')
     print(ui_b_count_1217_1218.info())
     ui_b_count_1217_1218.to_csv('tianchi_mobile_recommendation_predict.csv',index=False, encoding='utf-8')
+    #first_result = pd.read_csv((r'fresh_comp_offline\\result.csv'))
+    #first_result = first_result.astype('int')
+    #first_result.to_csv('tianchi_mobile_recommendation_predict_first_result.csv',index=False, encoding='utf-8')
         #print(i, np.mean(np.argmax(Y_test, axis=1) ==
                         #sess.run(predict_op, feed_dict={X: X_test}))) # 打印准确率
         #result = sess.run(predict_op, feed_dict={X: X_test})
